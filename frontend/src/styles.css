@@ -1,0 +1,29 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, system-ui, sans-serif;
+  background: #07131d;
+  color: #e2e8f0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  margin: 0;
+  min-height: 100%;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #07131d 0%, #0d1d2a 55%, #111827 100%);
+}
+
+body {
+  min-height: 100vh;
+}
+
+.MuiCard-root {
+  border-radius: 20px !important;
+}
+
+.route-score .MuiLinearProgress-bar {
+  border-radius: 999px;
+}

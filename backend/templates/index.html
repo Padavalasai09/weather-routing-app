@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Weather Routing</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/@mui/material@5.16.7/umd/material-ui.production.min.js"></script>
+    <script src="https://unpkg.com/@emotion/react@11.11.0/dist/emotion-react.umd.min.js"></script>
+    <script src="https://unpkg.com/@emotion/styled@11.11.0/dist/emotion-styled.umd.min.js"></script>
+    <style>
+      :root {
+        font-family: Inter, system-ui, sans-serif;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+      }
+      * { box-sizing: border-box; }
+      .app-shell { max-width: 1200px; margin: 0 auto; padding: 32px 16px 64px; }
+      .route-card { border-radius: 20px !important; }
+      .MuiLinearProgress-bar { border-radius: 999px; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState, useMemo } = React;
+      const { 
+        Alert, Box, Button, Card, CardContent, Chip, CircularProgress, CssBaseline,
+        Divider, Grid, IconButton, LinearProgress, MenuItem, Stack, TextField,
+        ThemeProvider, Typography, createTheme
+      } = MaterialUI;
+
+      const cityOptions = ['Seattle', 'San Francisco', 'Denver', 'Chicago', 'Austin', 'Miami', 'New York'];
+
+      function App() {
+        const [mode, setMode] = useState('dark');
+        const [form, setForm] = useState({
+          origin: 'Seattle',
+          destination: 'Austin',
+          departure_date: '2026-10-15',
+          preferred_temperature_c: 22,
+        });
+        const [loading, setLoading] = useState(false);
+        const [error, setError] = useState('');
+        const [result, setResult] = useState(null);
+
+        const theme = useMemo(() => createTheme({
+          palette: {
+            mode,
+            primary: { main: mode === 'dark' ? '#7dd3fc' : '#1d4ed8' },
+            secondary: { main: mode === 'dark' ? '#a78bfa' : '#7c3aed' },
+            background: {
+              default: mode === 'dark' ? '#07131d' : '#edf6ff',
+              paper: mode === 'dark' ? '#102537' : '#ffffff',
+            },
+            text: {
+              primary: mode === 'dark' ? '#e2e8f0' : '#0f172a',
+              secondary: mode === 'dark' ? '#cbd5e1' : '#475569',
+            },
+          },
+          typography: {
+            fontFamily: 'Inter, system-ui, sans-serif',
+          },
+          shape: {
+            borderRadius: 18,
+          },
+        }), [mode]);
+
+        const metricsSummary = useMemo(() => {
+          if (!result || !result.best_route) return null;
+          return {
+            score: result.best_route.score,
+            bestName: result.best_route.name,
+            summary: result.summary,
+          };
+        }, [result]);
+
+        const submitPlan = async () => {
+          setLoading(true);
+          setError('');
+          try {
+            const response = await fetch('/api/routes/plan/', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(form),
+            });
+            const payload = await response.json();
+            if (!response.ok) {
+              throw new Error(payload.error || 'Unable to generate route plan.');
+            }
+            setResult(payload);
+          } catch (err) {
+            setError(err.message || 'Unable to generate route recommendations right now.');
+          } finally {
+            setLoading(false);
+          }
+        };
+
+        const formatStatus = (status) => {
+          if (status === 'Low risk') return 'success';
+          if (status === 'Moderate risk') return 'warning';
+          return 'error';
+        };
+
+        const toggleTheme = () => {
+          setMode((prev) => (prev === 'dark' ? 'light' : 'dark'));
+        };
+
+        return (
+          <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <Box className="app-shell" sx={{
+              minHeight: '100vh',
+              background: mode === 'dark'
+                ? 'linear-gradient(135deg, #07131d 0%, #0d1d2a 55%, #111827 100%)'
+                : 'linear-gradient(135deg, #f8fbff 0%, #e2edf9 55%, #dfe9f4 100%)',
+              color: theme.palette.text.primary,
+              transition: 'all 0.2s ease',
+            }}>
+              <Stack spacing={4}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                  <Box>
+                    <Chip label="Weather routing assistant" color="primary" sx={{ mb: 2 }} />
+                    <Typography variant="h3" fontWeight={700}>Plan the cleanest route</Typography>
+                    <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
+                      Rank travel options using weather comfort, rainfall risk, and wind exposure before departure.
+                    </Typography>
+                  </Box>
+                  <IconButton onClick={toggleTheme} color="primary" sx={{ border: '1px solid rgba(255,255,255,0.2)', backgroundColor: 'rgba(255,255,255,0.08)' }}>
+                    {mode === 'dark' ? '☀️' : '🌙'}
+                  </IconButton>
+                </Box>
+
+                <Card className="route-card" sx={{ backgroundColor: 'background.paper', boxShadow: mode === 'dark' ? 8 : 3 }}>
+                  <CardContent>
+                    <Grid container spacing={2} alignItems="center">
+                      <Grid item xs={12} md={3}>
+                        <TextField select fullWidth label="Origin" value={form.origin} onChange={(event) => setForm((prev) => ({ ...prev, origin: event.target.value }))}>
+                          {cityOptions.map((city) => <MenuItem key={city} value={city}>{city}</MenuItem>)}
+                        </TextField>
+                      </Grid>
+                      <Grid item xs={12} md={3}>
+                        <TextField select fullWidth label="Destination" value={form.destination} onChange={(event) => setForm((prev) => ({ ...prev, destination: event.target.value }))}>
+                          {cityOptions.map((city) => <MenuItem key={city} value={city}>{city}</MenuItem>)}
+                        </TextField>
+                      </Grid>
+                      <Grid item xs={12} md={3}>
+                        <TextField fullWidth label="Departure date" type="date" value={form.departure_date} onChange={(event) => setForm((prev) => ({ ...prev, departure_date: event.target.value }))} InputLabelProps={{ shrink: true }} />
+                      </Grid>
+                      <Grid item xs={12} md={3}>
+                        <TextField fullWidth label="Target temp °C" type="number" value={form.preferred_temperature_c} onChange={(event) => setForm((prev) => ({ ...prev, preferred_temperature_c: Number(event.target.value) }))} />
+                      </Grid>
+                    </Grid>
+
+                    <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end' }}>
+                      <Button variant="contained" size="large" onClick={submitPlan} disabled={loading}>
+                        {loading ? <CircularProgress size={20} /> : 'Generate route'}
+                      </Button>
+                    </Box>
+                  </CardContent>
+                </Card>
+
+                {error ? <Alert severity="error">{error}</Alert> : null}
+
+                {metricsSummary ? (
+                  <Card className="route-card" sx={{ backgroundColor: 'background.paper', boxShadow: mode === 'dark' ? 8 : 3 }}>
+                    <CardContent>
+                      <Typography variant="overline" color="text.secondary">Recommended route</Typography>
+                      <Typography variant="h4" fontWeight={700}>{metricsSummary.bestName}</Typography>
+                      <Typography variant="body1" sx={{ mt: 1 }}>{metricsSummary.summary}</Typography>
+                      <Box sx={{ mt: 3 }}>
+                        <Typography variant="subtitle2" color="text.secondary">Comfort score</Typography>
+                        <LinearProgress variant="determinate" value={metricsSummary.score} sx={{ height: 12, borderRadius: 999, mt: 1, backgroundColor: mode === 'dark' ? 'rgba(125,211,252,0.15)' : 'rgba(59,130,246,0.12)' }} />
+                        <Typography variant="h5" sx={{ mt: 1, fontWeight: 700 }}>{metricsSummary.score}/100</Typography>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                ) : null}
+
+                {result && result.route_options && result.route_options.length ? (
+                  <Grid container spacing={2}>
+                    {result.route_options.map((route) => (
+                      <Grid item xs={12} md={4} key={route.id}>
+                        <Card className="route-card" sx={{ height: '100%', backgroundColor: 'background.paper', boxShadow: mode === 'dark' ? 8 : 3 }}>
+                          <CardContent>
+                            <Stack spacing={2}>
+                              <Box display="flex" justifyContent="space-between" alignItems="center">
+                                <Typography variant="h6">{route.name}</Typography>
+                                <Chip label={route.status} color={formatStatus(route.status)} size="small" />
+                              </Box>
+                              <Box>
+                                <Typography variant="overline" color="text.secondary">Route score</Typography>
+                                <Typography variant="h4" fontWeight={700}>{route.score}/100</Typography>
+                              </Box>
+                              <Divider />
+                              <Stack spacing={1.2}>
+                                {route.segments.map((segment) => (
+                                  <Box key={`${segment.city}-${segment.temperature_c}`}>
+                                    <Typography variant="subtitle2" fontWeight={700}>{segment.city}</Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                      {segment.temperature_c}°C • {segment.rain_mm} mm rain • {segment.wind_kph} km/h • {segment.condition}
+                                    </Typography>
+                                  </Box>
+                                ))}
+                              </Stack>
+                            </Stack>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                ) : null}
+              </Stack>
+            </Box>
+          </ThemeProvider>
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(<App />);
+    </script>
+  </body>
+</html>
