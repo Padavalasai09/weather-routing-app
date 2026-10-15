@@ -11,6 +11,9 @@ node_modules/
 dist/
 .vite/
 
+# Django production artifacts
+backend/staticfiles/
+
 # Editor
 .vscode/
 .DS_Store
